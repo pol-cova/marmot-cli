@@ -1,6 +1,6 @@
 # Binaries
-marmot
-marmot.exe
+/marmot
+/marmot.exe
 *.exe
 *.dll
 *.so
