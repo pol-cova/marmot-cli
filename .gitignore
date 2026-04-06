@@ -1,0 +1,53 @@
+# Binaries
+marmot
+marmot.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+bin/
+
+# Internal documentation and reference
+.internal/
+
+# Config and secrets (example files only)
+*.key
+*.pem
+*.pass
+!*.example
+
+# Local state
+*.db
+*.log
+
+# Database backups and dumps
+*.dump
+*.enc
+backups_*
