@@ -8,12 +8,13 @@ import (
 
 // Paths holds default paths for different platforms
 type Paths struct {
-	ConfigDir   string
-	ConfigFile  string
-	KeyFile     string
-	StateDB     string
-	BackupsDir  string
-	LogFile     string
+	ConfigDir  string
+	ConfigFile string
+	KeyFile    string
+	StateDB    string
+	PIDFile    string
+	BackupsDir string
+	LogFile    string
 }
 
 // canWrite checks if a directory is writable
@@ -45,9 +46,9 @@ func fileExists(path string) bool {
 // GetDefaultPaths returns platform-specific default paths
 func GetDefaultPaths() *Paths {
 	homeDir, _ := os.UserHomeDir()
-	
+
 	var configDir, stateDB, backupsDir, logFile string
-	
+
 	// Determine OS and set paths accordingly
 	switch {
 	case isLinux():
@@ -93,12 +94,15 @@ func GetDefaultPaths() *Paths {
 		backupsDir = filepath.Join(homeDir, ".marmot", "backups")
 		logFile = filepath.Join(homeDir, ".marmot", "marmot.log")
 	}
-	
+
+	stateDir := filepath.Dir(stateDB)
+
 	return &Paths{
 		ConfigDir:  configDir,
 		ConfigFile: filepath.Join(configDir, "config.yaml"),
 		KeyFile:    filepath.Join(configDir, "key.bin"),
 		StateDB:    stateDB,
+		PIDFile:    filepath.Join(stateDir, "marmot.pid"),
 		BackupsDir: backupsDir,
 		LogFile:    logFile,
 	}
@@ -115,4 +119,3 @@ func isDarwin() bool {
 func isWindows() bool {
 	return runtime.GOOS == "windows"
 }
-

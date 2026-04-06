@@ -6,6 +6,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/pol-cova/marmot-cli/internal/config"
+	"github.com/pol-cova/marmot-cli/internal/daemon"
 	"github.com/pol-cova/marmot-cli/internal/remote"
 	"github.com/pol-cova/marmot-cli/internal/storage"
 
@@ -37,6 +38,25 @@ func runStatus(cmd *cobra.Command, detailed bool) error {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	defer w.Flush()
+
+	fmt.Fprintln(w, "=== Daemon Status ===")
+	pid, pidErr := daemon.ReadPIDFile(cfg.Paths.PIDFile)
+	if pidErr != nil {
+		if os.IsNotExist(pidErr) {
+			fmt.Fprintf(w, "Status:\tNot running\n")
+		} else {
+			fmt.Fprintf(w, "Status:\tUnknown (invalid pid file)\n")
+		}
+	} else if daemon.IsProcessRunning(pid) {
+		fmt.Fprintf(w, "Status:\tRunning\n")
+		fmt.Fprintf(w, "PID:\t%d\n", pid)
+	} else {
+		fmt.Fprintf(w, "Status:\tNot running (stale pid file)\n")
+		fmt.Fprintf(w, "Last PID:\t%d\n", pid)
+	}
+	fmt.Fprintf(w, "PID file:\t%s\n", cfg.Paths.PIDFile)
+	fmt.Fprintf(w, "Log file:\t%s\n", cfg.Paths.LogFile)
+	fmt.Fprintln(w, "")
 
 	// Storage Status
 	fmt.Fprintln(w, "=== Storage Status ===")

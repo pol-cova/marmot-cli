@@ -92,6 +92,13 @@ marmot backup --db my-postgres
 # Check daemon and storage status
 marmot status
 
+# Check daemon process only
+marmot daemon status
+
+# Stop/restart daemon
+marmot daemon stop
+marmot daemon restart
+
 # Install and start as a system service (recommended)
 marmot service install
 ```

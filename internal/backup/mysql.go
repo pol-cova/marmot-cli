@@ -25,17 +25,19 @@ func (d *MySQLDumper) Dump(ctx context.Context, w io.Writer, config DumpConfig) 
 
 	if config.ContainerID != "" {
 		// Docker path: exec mysqldump inside container
+		// Pass MYSQL_PWD via env passthrough to avoid exposing password in process args.
 		args := []string{
 			"exec", "-i", config.ContainerID,
+			"-e", "MYSQL_PWD",
 			"mysqldump",
 			"-u", config.User,
-			"-p" + config.Password,
 			"--single-transaction",
 			"--routines",
 			"--triggers",
 			config.Database,
 		}
 		cmd = exec.CommandContext(ctx, "docker", args...)
+		cmd.Env = append(os.Environ(), "MYSQL_PWD="+config.Password)
 	} else {
 		// Direct path: call local mysqldump with MYSQL_PWD env var
 		args := []string{
@@ -64,4 +66,3 @@ func (d *MySQLDumper) Dump(ctx context.Context, w io.Writer, config DumpConfig) 
 
 	return nil
 }
-

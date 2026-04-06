@@ -72,8 +72,9 @@ func (c *Config) GetStoragePath() string {
 // LoadConfig loads configuration from file and environment variables
 func LoadConfig(configPath string) (*Config, error) {
 	paths := GetDefaultPaths()
+	v := viper.New()
 
-	viper.SetConfigType("yaml")
+	v.SetConfigType("yaml")
 
 	// Set default config file path if not provided
 	if configPath == "" {
@@ -81,40 +82,40 @@ func LoadConfig(configPath string) (*Config, error) {
 	}
 
 	// Set config file
-	viper.SetConfigFile(configPath)
+	v.SetConfigFile(configPath)
 
 	// Set environment variable prefix
-	viper.SetEnvPrefix("MARMOT")
-	viper.AutomaticEnv()
+	v.SetEnvPrefix("MARMOT")
+	v.AutomaticEnv()
 
 	// Bind environment variables
-	viper.BindEnv("storage_type", "MARMOT_STORAGE_TYPE")
+	v.BindEnv("storage_type", "MARMOT_STORAGE_TYPE")
 
 	// Local storage env vars
-	viper.BindEnv("local.path", "MARMOT_LOCAL_PATH")
-	viper.BindEnv("local.retention_days", "MARMOT_LOCAL_RETENTION_DAYS")
-	viper.BindEnv("local.min_free_space_gb", "MARMOT_LOCAL_MIN_FREE_SPACE_GB")
+	v.BindEnv("local.path", "MARMOT_LOCAL_PATH")
+	v.BindEnv("local.retention_days", "MARMOT_LOCAL_RETENTION_DAYS")
+	v.BindEnv("local.min_free_space_gb", "MARMOT_LOCAL_MIN_FREE_SPACE_GB")
 
 	// S3 env vars
-	viper.BindEnv("s3.provider", "MARMOT_S3_PROVIDER")
-	viper.BindEnv("s3.endpoint", "MARMOT_S3_ENDPOINT")
-	viper.BindEnv("s3.bucket", "MARMOT_S3_BUCKET")
-	viper.BindEnv("s3.region", "MARMOT_S3_REGION")
-	viper.BindEnv("s3.access_key", "MARMOT_S3_ACCESS_KEY")
-	viper.BindEnv("s3.secret_key", "MARMOT_S3_SECRET_KEY")
-	viper.BindEnv("s3.path_style", "MARMOT_S3_PATH_STYLE")
-	viper.BindEnv("s3.prefix", "MARMOT_S3_PREFIX")
-	viper.BindEnv("s3.server_id", "MARMOT_S3_SERVER_ID")
+	v.BindEnv("s3.provider", "MARMOT_S3_PROVIDER")
+	v.BindEnv("s3.endpoint", "MARMOT_S3_ENDPOINT")
+	v.BindEnv("s3.bucket", "MARMOT_S3_BUCKET")
+	v.BindEnv("s3.region", "MARMOT_S3_REGION")
+	v.BindEnv("s3.access_key", "MARMOT_S3_ACCESS_KEY")
+	v.BindEnv("s3.secret_key", "MARMOT_S3_SECRET_KEY")
+	v.BindEnv("s3.path_style", "MARMOT_S3_PATH_STYLE")
+	v.BindEnv("s3.prefix", "MARMOT_S3_PREFIX")
+	v.BindEnv("s3.server_id", "MARMOT_S3_SERVER_ID")
 
 	// Read config file (optional - may not exist on first run)
-	if err := viper.ReadInConfig(); err != nil {
+	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
 
 	var config Config
-	if err := viper.Unmarshal(&config); err != nil {
+	if err := v.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 

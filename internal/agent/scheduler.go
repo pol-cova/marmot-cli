@@ -3,9 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/pol-cova/marmot-cli/internal/config"
@@ -65,15 +62,6 @@ func (s *Scheduler) Start() error {
 		if err := s.agent.RetryFailedUploads(s.ctx); err != nil {
 			fmt.Printf("Error processing upload queue on start: %v\n", err)
 		}
-	}()
-
-	// Setup signal handling
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-sigChan
-		s.Stop()
 	}()
 
 	return nil

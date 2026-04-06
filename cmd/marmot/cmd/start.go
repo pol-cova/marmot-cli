@@ -9,6 +9,7 @@ import (
 	"github.com/pol-cova/marmot-cli/internal/agent"
 	"github.com/pol-cova/marmot-cli/internal/config"
 	"github.com/pol-cova/marmot-cli/internal/crypto"
+	"github.com/pol-cova/marmot-cli/internal/daemon"
 	"github.com/pol-cova/marmot-cli/internal/remote"
 	"github.com/pol-cova/marmot-cli/internal/storage"
 
@@ -37,6 +38,15 @@ func runStart(cmd *cobra.Command, foreground bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
+
+	releasePID, err := daemon.AcquirePIDFile(cfg.Paths.PIDFile)
+	if err != nil {
+		if alreadyRunning, ok := err.(*daemon.AlreadyRunningError); ok {
+			return fmt.Errorf("marmot daemon already running (pid %d)", alreadyRunning.PID)
+		}
+		return fmt.Errorf("failed to acquire daemon lock: %w", err)
+	}
+	defer releasePID()
 
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("invalid config: %w", err)
@@ -98,6 +108,7 @@ func runStart(cmd *cobra.Command, foreground bool) error {
 	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigChan)
 
 	<-sigChan
 

@@ -343,13 +343,13 @@ func (a *Agent) restoreToDatabase(ctx context.Context, dbConfig *config.Database
 		if dbConfig.ContainerID != "" {
 			// Docker path
 			args := []string{
-				"exec", "-i", dbConfig.ContainerID,
+				"exec", "-i", "-e", "MYSQL_PWD", dbConfig.ContainerID,
 				"mysql",
 				"-u", dbConfig.User,
-				"-p" + dbConfig.Password,
 				dbConfig.Name,
 			}
 			cmd = exec.CommandContext(ctx, "docker", args...)
+			cmd.Env = append(os.Environ(), "MYSQL_PWD="+dbConfig.Password)
 		} else {
 			// Direct path
 			args := []string{"-u", dbConfig.User}
@@ -376,7 +376,7 @@ func (a *Agent) restoreToDatabase(ctx context.Context, dbConfig *config.Database
 			// Docker path
 			args := []string{
 				"exec", "-i",
-				"-e", "PGPASSWORD=" + dbConfig.Password,
+				"-e", "PGPASSWORD",
 				dbConfig.ContainerID,
 				"pg_restore",
 				"-U", dbConfig.User,
@@ -389,6 +389,7 @@ func (a *Agent) restoreToDatabase(ctx context.Context, dbConfig *config.Database
 			}
 			args = append(args, "-d", dbConfig.Name, "-v")
 			cmd = exec.CommandContext(ctx, "docker", args...)
+			cmd.Env = append(os.Environ(), "PGPASSWORD="+dbConfig.Password)
 		} else {
 			// Direct path
 			args := []string{"-U", dbConfig.User}

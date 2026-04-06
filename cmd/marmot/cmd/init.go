@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -163,11 +162,12 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 	fmt.Println("Starting Marmot daemon in background...")
-	if err := autoStartDaemon(&cfg); err != nil {
+	if err := launchDaemonBackground(&cfg); err != nil {
 		fmt.Printf("Warning: failed to auto-start daemon: %v\n", err)
 		fmt.Println("Run 'marmot start' manually to start scheduled backups.")
 	} else {
 		fmt.Println("Daemon started.")
+		fmt.Printf("PID file: %s\n", cfg.Paths.PIDFile)
 		fmt.Printf("Logs: %s\n", cfg.Paths.LogFile)
 	}
 
@@ -399,43 +399,4 @@ func confirm(reader *bufio.Reader, message string) bool {
 	input = strings.TrimSpace(strings.ToLower(input))
 
 	return input == "y" || input == "yes"
-}
-
-func autoStartDaemon(cfg *config.Config) error {
-	exePath, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("failed to locate executable: %w", err)
-	}
-
-	args := []string{"start", "--foreground"}
-	if configPath != "" {
-		args = append(args, "--config", configPath)
-	}
-
-	cmd := exec.Command(exePath, args...)
-	cmd.Stdin = nil
-
-	logDir := filepath.Dir(cfg.Paths.LogFile)
-	if err := os.MkdirAll(logDir, 0750); err != nil {
-		return fmt.Errorf("failed to create log directory: %w", err)
-	}
-
-	logFile, err := os.OpenFile(cfg.Paths.LogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
-	if err != nil {
-		return fmt.Errorf("failed to open log file: %w", err)
-	}
-	defer logFile.Close()
-
-	cmd.Stdout = logFile
-	cmd.Stderr = logFile
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to launch daemon process: %w", err)
-	}
-
-	if err := cmd.Process.Release(); err != nil {
-		return fmt.Errorf("failed to release daemon process handle: %w", err)
-	}
-
-	return nil
 }

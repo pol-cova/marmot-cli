@@ -7,13 +7,36 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
 // SQLiteQueue implements the Queue interface using SQLite
 type SQLiteQueue struct {
 	db *sql.DB
+}
+
+func parseSQLiteTime(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}
+	}
+
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05.999999999-07:00",
+		"2006-01-02 15:04:05.999999999",
+		"2006-01-02 15:04:05",
+	}
+
+	for _, layout := range layouts {
+		if parsed, err := time.Parse(layout, s); err == nil {
+			return parsed
+		}
+	}
+
+	return time.Time{}
 }
 
 // canReadFile checks if a file is readable
@@ -36,7 +59,7 @@ func NewSQLiteQueue(dbPath string) (*SQLiteQueue, error) {
 	// Check if database file exists
 	_, err := os.Stat(dbPath)
 	fileExists := err == nil
-	
+
 	// Check if we can write to the database file
 	canWrite := false
 	if fileExists {
@@ -47,7 +70,7 @@ func NewSQLiteQueue(dbPath string) (*SQLiteQueue, error) {
 			canWrite = true
 		}
 	}
-	
+
 	// Check directory permissions
 	dir := filepath.Dir(dbPath)
 	_, dirErr := os.Stat(dir)
@@ -62,22 +85,22 @@ func NewSQLiteQueue(dbPath string) (*SQLiteQueue, error) {
 			canWriteDir = true
 		}
 	}
-	
+
 	// Determine if we should try read-only mode first
 	// Try read-only if:
 	// 1. File exists but we can't write to it, OR
 	// 2. Directory isn't writable, OR
 	// 3. We're not root and file exists (safer to try read-only first)
 	tryReadOnlyFirst := fileExists && (!canWrite || !canWriteDir || !isRoot())
-	
+
 	var db *sql.DB
-	
+
 	if tryReadOnlyFirst {
 		// Check if file is readable before attempting to open
 		if !canReadFile(dbPath) {
 			return nil, fmt.Errorf("failed to open database: permission denied (hint: database file is owned by root. Run: sudo chmod 644 /var/lib/marmot/state.db to allow read access, or run 'marmot status' with sudo)")
 		}
-		
+
 		// Try read-only mode first
 		// The database might be in WAL mode which requires write access even for reads
 		// Try multiple connection strategies
@@ -86,7 +109,7 @@ func NewSQLiteQueue(dbPath string) (*SQLiteQueue, error) {
 			dbPath + "?mode=ro&_journal_mode=DELETE",
 			dbPath + "?mode=ro",
 		}
-		
+
 		var lastErr error
 		for _, connStr := range connectionStrings {
 			db, err = sql.Open("sqlite3", connStr)
@@ -94,7 +117,7 @@ func NewSQLiteQueue(dbPath string) (*SQLiteQueue, error) {
 				lastErr = err
 				continue
 			}
-			
+
 			// Test if read-only connection works by trying a simple query
 			var testVal int
 			if err := db.QueryRow("SELECT 1").Scan(&testVal); err != nil {
@@ -102,21 +125,21 @@ func NewSQLiteQueue(dbPath string) (*SQLiteQueue, error) {
 				lastErr = err
 				continue
 			}
-			
+
 			// Success - return the working connection
 			return &SQLiteQueue{db: db}, nil
 		}
-		
+
 		// All attempts failed - check if it's a permission error
 		errStr := strings.ToLower(lastErr.Error())
 		if strings.Contains(errStr, "permission denied") || strings.Contains(errStr, "unable to open database file") {
 			return nil, fmt.Errorf("failed to open database: permission denied (hint: database file is owned by root. Run: sudo chmod 644 /var/lib/marmot/state.db to allow read access, or run 'marmot status' with sudo)")
 		}
-		
+
 		// Otherwise, likely WAL mode issue
 		return nil, fmt.Errorf("failed to open database in read-only mode: %w (hint: database is likely in WAL mode. Run: sudo sqlite3 /var/lib/marmot/state.db 'PRAGMA journal_mode=DELETE;' to convert it)", lastErr)
 	}
-	
+
 	// Ensure directory exists (try even if file exists, in case we need to create it)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		// If directory creation fails and file doesn't exist, return error
@@ -135,7 +158,7 @@ func NewSQLiteQueue(dbPath string) (*SQLiteQueue, error) {
 			return &SQLiteQueue{db: db}, nil
 		}
 	}
-	
+
 	// Try to open with write access first
 	// Use DELETE mode instead of WAL to allow read-only access later
 	db, err = sql.Open("sqlite3", dbPath+"?_journal_mode=DELETE")
@@ -153,16 +176,16 @@ func NewSQLiteQueue(dbPath string) (*SQLiteQueue, error) {
 		}
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-	
+
 	// Explicitly set journal mode to DELETE to prevent WAL mode conversion
 	// This must be done immediately after opening, before any other operations
 	if _, err := db.Exec("PRAGMA journal_mode=DELETE"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to set journal mode: %w", err)
 	}
-	
+
 	queue := &SQLiteQueue{db: db}
-	
+
 	// Try to initialize schema - if this fails due to permissions, fall back to read-only
 	if err := queue.init(); err != nil {
 		// Check if error is due to read-only database
@@ -187,7 +210,7 @@ func NewSQLiteQueue(dbPath string) (*SQLiteQueue, error) {
 		// Successfully initialized - set file permissions (ignore errors if owned by another user)
 		os.Chmod(dbPath, 0600)
 	}
-	
+
 	return queue, nil
 }
 
@@ -225,12 +248,12 @@ func (q *SQLiteQueue) Enqueue(backup BackupFile) error {
 	INSERT OR REPLACE INTO upload_queue (name, path, size, database_id, created_at)
 	VALUES (?, ?, ?, ?, ?)
 	`
-	
+
 	_, err := q.db.Exec(query, backup.Name, backup.Path, backup.Size, backup.DatabaseID, backup.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to enqueue backup: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -242,10 +265,10 @@ func (q *SQLiteQueue) Dequeue() (*BackupFile, error) {
 	ORDER BY created_at ASC
 	LIMIT 1
 	`
-	
+
 	var backup BackupFile
 	var createdAtStr string
-	
+
 	err := q.db.QueryRow(query).Scan(
 		&backup.Name,
 		&backup.Path,
@@ -253,22 +276,22 @@ func (q *SQLiteQueue) Dequeue() (*BackupFile, error) {
 		&backup.DatabaseID,
 		&createdAtStr,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to dequeue backup: %w", err)
 	}
-	
-	backup.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-	
+
+	backup.CreatedAt = parseSQLiteTime(createdAtStr)
+
 	// Remove from queue
 	deleteQuery := `DELETE FROM upload_queue WHERE name = ?`
 	if _, err := q.db.Exec(deleteQuery, backup.Name); err != nil {
 		return nil, fmt.Errorf("failed to remove from queue: %w", err)
 	}
-	
+
 	return &backup, nil
 }
 
@@ -280,10 +303,10 @@ func (q *SQLiteQueue) Peek() (*BackupFile, error) {
 	ORDER BY created_at ASC
 	LIMIT 1
 	`
-	
+
 	var backup BackupFile
 	var createdAtStr string
-	
+
 	err := q.db.QueryRow(query).Scan(
 		&backup.Name,
 		&backup.Path,
@@ -291,16 +314,16 @@ func (q *SQLiteQueue) Peek() (*BackupFile, error) {
 		&backup.DatabaseID,
 		&createdAtStr,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to peek queue: %w", err)
 	}
-	
-	backup.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-	
+
+	backup.CreatedAt = parseSQLiteTime(createdAtStr)
+
 	return &backup, nil
 }
 
@@ -339,9 +362,9 @@ func (q *SQLiteQueue) List() ([]BackupFile, error) {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
-		backup.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+		backup.CreatedAt = parseSQLiteTime(createdAtStr)
 		if lastRetryAtStr.Valid && lastRetryAtStr.String != "" {
-			backup.LastRetryAt, _ = time.Parse(time.RFC3339, lastRetryAtStr.String)
+			backup.LastRetryAt = parseSQLiteTime(lastRetryAtStr.String)
 		}
 		backups = append(backups, backup)
 	}
@@ -373,42 +396,42 @@ func (q *SQLiteQueue) IncrementRetry(name string, err error) error {
 // GetRetryCount returns the retry count for a queued item
 func (q *SQLiteQueue) GetRetryCount(name string) (int, error) {
 	query := `SELECT retry_count FROM upload_queue WHERE name = ?`
-	
+
 	var retryCount int
 	err := q.db.QueryRow(query, name).Scan(&retryCount)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get retry count: %w", err)
 	}
-	
+
 	return retryCount, nil
 }
 
 // Remove removes a backup from the queue
 func (q *SQLiteQueue) Remove(name string) error {
 	query := `DELETE FROM upload_queue WHERE name = ?`
-	
+
 	result, err := q.db.Exec(query, name)
 	if err != nil {
 		return fmt.Errorf("failed to remove from queue: %w", err)
 	}
-	
+
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
 		return fmt.Errorf("backup not found in queue: %s", name)
 	}
-	
+
 	return nil
 }
 
 // Clear removes all items from the queue
 func (q *SQLiteQueue) Clear() error {
 	query := `DELETE FROM upload_queue`
-	
+
 	_, err := q.db.Exec(query)
 	if err != nil {
 		return fmt.Errorf("failed to clear queue: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -416,4 +439,3 @@ func (q *SQLiteQueue) Clear() error {
 func (q *SQLiteQueue) Close() error {
 	return q.db.Close()
 }
-

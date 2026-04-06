@@ -27,7 +27,7 @@ func (d *PostgreSQLDumper) Dump(ctx context.Context, w io.Writer, config DumpCon
 		// Docker path: exec pg_dump inside container with PGPASSWORD env var
 		args := []string{
 			"exec", "-i",
-			"-e", "PGPASSWORD=" + config.Password,
+			"-e", "PGPASSWORD",
 			config.ContainerID,
 			"pg_dump",
 			"-U", config.User,
@@ -40,6 +40,7 @@ func (d *PostgreSQLDumper) Dump(ctx context.Context, w io.Writer, config DumpCon
 		}
 		args = append(args, "-F", "c", "-b", config.Database)
 		cmd = exec.CommandContext(ctx, "docker", args...)
+		cmd.Env = append(os.Environ(), "PGPASSWORD="+config.Password)
 	} else {
 		// Direct path: call local pg_dump with PGPASSWORD env var
 		args := []string{"-U", config.User, "-F", "c", "-b"}
@@ -63,4 +64,3 @@ func (d *PostgreSQLDumper) Dump(ctx context.Context, w io.Writer, config DumpCon
 
 	return nil
 }
-
