@@ -12,12 +12,10 @@ Supports AWS S3, Cloudflare R2, Backblaze B2, Wasabi, MinIO, and local-only mode
 
 | Version | Status | Channel | Description |
 |---------|--------|---------|-------------|
-| **v0.2.0** | **Stable** | Production | Current stable release with Hub support |
-| **v0.3.0-alpha** | **Alpha** | Testing | New S3-only architecture + local storage (⚠️ Pre-release) |
+| **v0.3.0-alpha** | **Alpha (Current)** | Pre-release | Current and only available release (⚠️ Testing only) |
 
 **Current Recommendation:**
-- **Production:** Use [v0.2.0](https://github.com/pol-cova/marmot-cli/releases/tag/v0.2.0) (stable with Hub support)
-- **Testing:** Try [v0.3.0-alpha](https://github.com/pol-cova/marmot-cli/releases/tag/v0.3.0-alpha) (new features, may have issues)
+- **Available version:** Use [v0.3.0-alpha](https://github.com/pol-cova/marmot-cli/releases/tag/v0.3.0-alpha) (pre-release for testing)
 
 See [RELEASES.md](RELEASES.md) for our full release strategy and version compatibility.
 
@@ -86,18 +84,16 @@ marmot backup --all
 marmot backup --db my-postgres
 ```
 
-### 4. Start the Daemon (Optional)
+### 4. Daemon Auto-Start
 
-For automated scheduled backups:
+`marmot init` now starts the daemon automatically in the background so scheduled backups begin right away.
 
 ```bash
-# Run manually (for testing)
-marmot start
+# Check daemon and storage status
+marmot status
 
-# Or install as systemd service (production)
-sudo cp marmot.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now marmot
+# Install and start as a system service (recommended)
+marmot service install
 ```
 
 ---
