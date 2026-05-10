@@ -143,7 +143,7 @@ func (d *LocalDiscoverer) detectOpenPorts() portPresence {
 }
 
 func canConnect(host string, port int, timeout time.Duration) bool {
-	addr := fmt.Sprintf("%s:%d", host, port)
+	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err != nil {
 		return false
