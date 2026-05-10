@@ -116,9 +116,11 @@ func runStatus(cmd *cobra.Command, detailed bool) error {
 		} else {
 			if err := remoteStorage.HealthCheck(cmd.Context()); err != nil {
 				fmt.Fprintf(w, "Status:\tDisconnected\n")
+				fmt.Fprintf(w, "Health:\tFailed\n")
 				fmt.Fprintf(w, "Error:\t%v\n", err)
 			} else {
 				fmt.Fprintf(w, "Status:\tConnected\n")
+				fmt.Fprintf(w, "Health:\tOK\n")
 				fmt.Fprintf(w, "Provider:\t%s\n", remoteStorage.GetProviderType())
 				fmt.Fprintf(w, "Bucket:\t%s\n", cfg.S3.Bucket)
 				if cfg.S3.Endpoint != "" {

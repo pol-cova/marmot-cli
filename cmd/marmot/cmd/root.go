@@ -70,6 +70,7 @@ Supports MySQL, PostgreSQL, and MongoDB with encryption and compression.`,
 	rootCmd.AddCommand(newStatusCmd())
 	rootCmd.AddCommand(newRestoreCmd())
 	rootCmd.AddCommand(newStartCmd())
+	rootCmd.AddCommand(newStopCmd())
 	rootCmd.AddCommand(newQueueCmd())
 	rootCmd.AddCommand(newCleanupCmd())
 	rootCmd.AddCommand(newDecryptCmd())

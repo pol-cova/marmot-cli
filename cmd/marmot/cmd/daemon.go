@@ -68,38 +68,7 @@ func newDaemonStopCmd() *cobra.Command {
 		Use:   "stop",
 		Short: "Stop daemon process",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadConfig(getConfigPath())
-			if err != nil {
-				return fmt.Errorf("failed to load config: %w", err)
-			}
-
-			pid, err := daemon.ReadPIDFile(cfg.Paths.PIDFile)
-			if err != nil {
-				if os.IsNotExist(err) {
-					fmt.Println("Daemon is not running.")
-					return nil
-				}
-				return fmt.Errorf("failed to read pid file: %w", err)
-			}
-
-			if !daemon.IsProcessRunning(pid) {
-				_ = os.Remove(cfg.Paths.PIDFile)
-				fmt.Printf("Removed stale pid file: %s\n", cfg.Paths.PIDFile)
-				return nil
-			}
-
-			timeout := 10 * time.Second
-			if force {
-				timeout = 2 * time.Second
-			}
-
-			if err := daemon.StopProcess(pid, timeout); err != nil {
-				return err
-			}
-
-			_ = os.Remove(cfg.Paths.PIDFile)
-			fmt.Printf("Stopped daemon (pid %d).\n", pid)
-			return nil
+			return runStopDaemon(force)
 		},
 	}
 

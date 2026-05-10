@@ -27,6 +27,6 @@ type DatabaseInfo struct {
 
 // Discoverer defines the interface for database discovery
 type Discoverer interface {
-	// Discover finds all databases in Docker containers
+	// Discover finds databases based on the implementation strategy
 	Discover(ctx context.Context) ([]DatabaseInfo, error)
 }

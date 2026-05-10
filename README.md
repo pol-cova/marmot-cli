@@ -8,14 +8,14 @@
 
 Supports AWS S3, Cloudflare R2, Backblaze B2, Wasabi, MinIO, and local-only mode for users who just need automated local backups with retention management.
 
-### 🚀 Release Status
+### Release Status
 
 | Version | Status | Channel | Description |
 |---------|--------|---------|-------------|
-| **v0.3.0-alpha** | **Alpha (Current)** | Pre-release | Current and only available release (⚠️ Testing only) |
+| **v0.4.0** | **Stable (Current)** | Release | Current stable release |
 
 **Current Recommendation:**
-- **Available version:** Use [v0.3.0-alpha](https://github.com/pol-cova/marmot-cli/releases/tag/v0.3.0-alpha) (pre-release for testing)
+- **Available version:** Use [v0.4.0](https://github.com/pol-cova/marmot-cli/releases/tag/v0.4.0)
 
 See [RELEASES.md](RELEASES.md) for our full release strategy and version compatibility.
 
@@ -123,13 +123,13 @@ curl -fsSL https://raw.githubusercontent.com/pol-cova/marmot-cli/main/install.sh
 curl -fsSL https://raw.githubusercontent.com/pol-cova/marmot-cli/main/install.sh | bash -s --help
 ```
 
-**⚠️ Pre-release Versions (For Testing Only):**
+**Pre-release Versions (For Testing Only):**
 ```bash
 # Install alpha/beta/rc version (requires confirmation)
-curl -fsSL https://raw.githubusercontent.com/pol-cova/marmot-cli/main/install.sh | bash -s v0.3.0-alpha
+curl -fsSL https://raw.githubusercontent.com/pol-cova/marmot-cli/main/install.sh | bash -s v0.5.0-alpha
 
 # Skip confirmation (use with caution)
-curl -fsSL https://raw.githubusercontent.com/pol-cova/marmot-cli/main/install.sh | bash -s v0.3.0-alpha --yes
+curl -fsSL https://raw.githubusercontent.com/pol-cova/marmot-cli/main/install.sh | bash -s v0.5.0-alpha --yes
 ```
 
 See [RELEASES.md](RELEASES.md) for our release channel strategy and versioning.

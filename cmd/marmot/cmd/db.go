@@ -21,6 +21,7 @@ func newDbCmd() *cobra.Command {
 	cmd.AddCommand(newDbAddCmd())
 	cmd.AddCommand(newDbListCmd())
 	cmd.AddCommand(newDbRemoveCmd())
+	cmd.AddCommand(newDbDiscoverCmd())
 	return cmd
 }
 
@@ -201,7 +202,6 @@ func newDbListCmd() *cobra.Command {
 
 			if len(cfg.Databases) == 0 {
 				fmt.Println("No databases configured.")
-				fmt.Println("Add one with: marmot db add --type postgres --dsn \"postgres://...\" --id mydb")
 				return nil
 			}
 
@@ -211,11 +211,14 @@ func newDbListCmd() *cobra.Command {
 			for _, db := range cfg.Databases {
 				conn := db.ContainerID
 				if conn == "" && db.DSN != "" {
-					conn = db.DSN
+					conn = "[DSN]"
+				} else if conn == "" {
+					conn = fmt.Sprintf("%s:%d/%s", db.Host, db.Port, db.Name)
 				}
 				if len(conn) > 45 {
 					conn = conn[:42] + "..."
 				}
+
 				enabled := "yes"
 				if !db.Enabled {
 					enabled = "no"

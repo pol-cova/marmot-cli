@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,7 +59,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Docker discovery (same for both storage types)
+	// Database discovery (same for both storage types)
 	fmt.Println("\n=== Database Discovery ===")
 	fmt.Println("Scanning Docker containers for databases...")
 
@@ -66,12 +67,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 	discoverer, err := discovery.NewDockerDiscoverer()
 	if err != nil {
 		fmt.Printf("Warning: Docker not available (%v). Skipping auto-discovery.\n", err)
-		fmt.Println("Use 'marmot db add' to configure databases manually.")
 	} else {
 		databases, err = discoverer.Discover(cmd.Context())
 		if err != nil {
 			fmt.Printf("Warning: Failed to discover databases: %v\n", err)
 		}
+	}
+
+	if err := mergeLocalDatabases(cmd.Context(), &databases); err != nil {
+		fmt.Printf("Warning: Failed to discover local databases: %v\n", err)
 	}
 
 	if len(databases) == 0 {
@@ -84,23 +88,13 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Select databases
 	var dbConfigs []config.DatabaseConfig
 	for _, db := range databases {
-		fmt.Printf("\nFound %s database: %s (container: %s)\n", db.Type, db.Database, db.ContainerName)
-		if confirm(reader, "Add this database?") {
-			schedule := prompt(reader, "Backup schedule (cron expression)", "0 2 * * *")
-
-			dbConfig := config.DatabaseConfig{
-				ID:          fmt.Sprintf("%s-%s", db.ContainerID[:12], db.Database),
-				Type:        string(db.Type),
-				ContainerID: db.ContainerID,
-				Name:        db.Database,
-				User:        db.User,
-				Password:    db.Password,
-				Host:        db.Host,
-				Port:        db.Port,
-				Schedule:    schedule,
-				Enabled:     true,
+		if dbConfig, ok := buildDbConfigFromDiscovery(reader, db); ok {
+			status, err := verifyDiscoveredConnection(cmd.Context(), dbConfig)
+			if err != nil {
+				fmt.Printf("Connection check: failed (%v)\n", err)
+			} else {
+				fmt.Printf("Connection check: ok (%s)\n", status)
 			}
-
 			dbConfigs = append(dbConfigs, dbConfig)
 		}
 	}
@@ -399,4 +393,126 @@ func confirm(reader *bufio.Reader, message string) bool {
 	input = strings.TrimSpace(strings.ToLower(input))
 
 	return input == "y" || input == "yes"
+}
+
+func mergeLocalDatabases(ctx context.Context, databases *[]discovery.DatabaseInfo) error {
+	fmt.Println("Scanning local services for databases...")
+	localDiscoverer := discovery.NewLocalDiscoverer()
+	localDatabases, err := localDiscoverer.Discover(ctx)
+	if err != nil {
+		return err
+	}
+	*databases = mergeUniqueDatabases(*databases, localDatabases)
+	return nil
+}
+
+func buildDbConfigFromDiscovery(reader *bufio.Reader, db discovery.DatabaseInfo) (config.DatabaseConfig, bool) {
+	source := "local"
+	if db.ContainerID != "" || db.ContainerName != "" {
+		source = "docker"
+	}
+	fmt.Printf("\nFound %s database (%s): %s\n", db.Type, source, formatDiscoveredTarget(db))
+	if !confirm(reader, "Add this database?") {
+		return config.DatabaseConfig{}, false
+	}
+
+	schedule := prompt(reader, "Backup schedule (cron expression)", "0 2 * * *")
+
+	id := buildDiscoveredID(db)
+	name := db.Database
+	user := db.User
+	password := db.Password
+	host := db.Host
+	port := db.Port
+
+	if db.ContainerID == "" {
+		name = prompt(reader, "Database name", defaultString(name, "postgres"))
+		user = prompt(reader, "Database user", defaultString(user, "postgres"))
+		password = prompt(reader, "Database password (leave blank if none)", "")
+		host = prompt(reader, "Database host", defaultString(host, "localhost"))
+		portStr := prompt(reader, "Database port", fmt.Sprintf("%d", defaultInt(port, defaultPortForType(db.Type))))
+		if parsedPort, err := strconv.Atoi(portStr); err == nil {
+			port = parsedPort
+		}
+	}
+
+	config := config.DatabaseConfig{
+		ID:          id,
+		Type:        string(db.Type),
+		ContainerID: db.ContainerID,
+		Name:        name,
+		User:        user,
+		Password:    password,
+		Host:        host,
+		Port:        port,
+		Schedule:    schedule,
+		Enabled:     true,
+	}
+
+	return config, true
+}
+
+func mergeUniqueDatabases(existing, incoming []discovery.DatabaseInfo) []discovery.DatabaseInfo {
+	seen := map[string]struct{}{}
+	for _, db := range existing {
+		seen[discoveryKey(db)] = struct{}{}
+	}
+	for _, db := range incoming {
+		key := discoveryKey(db)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		existing = append(existing, db)
+	}
+	return existing
+}
+
+func discoveryKey(db discovery.DatabaseInfo) string {
+	return fmt.Sprintf("%s|%s|%d|%s", db.Type, db.Host, db.Port, db.Database)
+}
+
+func buildDiscoveredID(db discovery.DatabaseInfo) string {
+	if db.ContainerID != "" {
+		if len(db.ContainerID) > 12 {
+			return fmt.Sprintf("%s-%s", db.ContainerID[:12], db.Database)
+		}
+		return fmt.Sprintf("%s-%s", db.ContainerID, db.Database)
+	}
+
+	return fmt.Sprintf("local-%s-%s-%d", db.Type, defaultString(db.Database, "db"), defaultInt(db.Port, defaultPortForType(db.Type)))
+}
+
+func formatDiscoveredTarget(db discovery.DatabaseInfo) string {
+	if db.ContainerID != "" {
+		return fmt.Sprintf("%s (container: %s)", db.Database, db.ContainerName)
+	}
+	return fmt.Sprintf("%s@%s:%d", defaultString(db.Database, "db"), defaultString(db.Host, "localhost"), defaultInt(db.Port, defaultPortForType(db.Type)))
+}
+
+func defaultString(value, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
+}
+
+func defaultInt(value, fallback int) int {
+	if value == 0 {
+		return fallback
+	}
+	return value
+}
+
+func defaultPortForType(dbType discovery.DatabaseType) int {
+	switch dbType {
+	case discovery.DatabaseTypePostgreSQL:
+		return 5432
+	case discovery.DatabaseTypeMySQL:
+		return 3306
+	case discovery.DatabaseTypeMongoDB:
+		return 27017
+	default:
+		return 0
+	}
 }
