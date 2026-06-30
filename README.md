@@ -27,6 +27,7 @@ See [RELEASES.md](RELEASES.md) for our full release strategy and version compati
 - [Motivation](#motivation)
 - [Features](#features)
 - [Quick Start](#quick-start)
+- [Simple Usage](#simple-usage)
 - [Installation](#installation)
 - [Supported Storage Providers](#supported-storage-providers)
 - [Commands](#commands)
@@ -109,6 +110,18 @@ marmot daemon restart
 # Install and start as a system service (recommended)
 marmot service install
 ```
+
+---
+
+## Simple Usage
+
+Here are the most common commands to get you started:
+
+- **Run manual backup**: `marmot backup <db-id>` (or `--all`)
+- **Restore a backup**: `marmot restore`
+- **Verify backup integrity**: `marmot verify`
+- **Check daemon/backup status**: `marmot status`
+- **Manage configured databases**: `marmot db list`, `db add`, `db remove`
 
 ---
 
