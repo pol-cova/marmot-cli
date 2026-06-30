@@ -27,7 +27,7 @@ See [RELEASES.md](RELEASES.md) for our full release strategy and version compati
 - [Motivation](#motivation)
 - [Features](#features)
 - [Quick Start](#quick-start)
-- [Simple Usage](#simple-usage)
+- [Usage](#usage)
 - [Installation](#installation)
 - [Supported Storage Providers](#supported-storage-providers)
 - [Commands](#commands)
@@ -113,7 +113,7 @@ marmot service install
 
 ---
 
-## Simple Usage
+## Usage
 
 Here are the most common commands to get you started:
 
