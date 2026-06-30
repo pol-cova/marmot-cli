@@ -24,6 +24,7 @@ See [RELEASES.md](RELEASES.md) for our full release strategy and version compati
 ## Table of Contents
 
 - [Release Status](#-release-status)
+- [Motivation](#motivation)
 - [Features](#features)
 - [Quick Start](#quick-start)
 - [Installation](#installation)
@@ -35,6 +36,12 @@ See [RELEASES.md](RELEASES.md) for our full release strategy and version compati
 - [Environment Variables](#environment-variables)
 - [Development](#development)
 - [License](#license)
+
+---
+
+## Motivation
+
+Marmot was built out of a personal need for a simpler, easier, and completely free way to backup databases. Existing tools are often expensive, complicated to configure, or require routing your sensitive data through third-party servers. Marmot is a standalone, lightweight agent that backs up your databases directly to your own storage—no middleware, no subscription fees, and no unnecessary complexity.
 
 ---
 
